@@ -89,6 +89,39 @@ class ViewsTest(TestCase):
         )
 
     @patch("elasticsearch.client.Elasticsearch.search")
+    def test_search_pagination_total_as_dict(self, mock_search):
+        mock_search.return_value = {
+            "_shards": {"failed": 0, "successful": 5, "total": 5},
+            "hits": {
+                "hits": [],
+                "max_score": 0,
+                "total": {"value": 1, "relation": "eq"},
+            },
+            "timed_out": False,
+            "took": 24,
+        }
+
+        response = self.client.get(
+            "/books/search", {"limit": 10, "offset": 1, "title": "New book"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data,
+            {
+                "count": 1,
+                "next": None,
+                "previous": "http://testserver/books/search" "?limit=10&title=New+book",
+                "results": [],
+            },
+        )
+
+        mock_search.assert_called_once_with(
+            body={"from": 1, "query": {"match_all": {}}, "size": 10},
+            doc_type="Book",
+            index="book",
+        )
+
+    @patch("elasticsearch.client.Elasticsearch.search")
     def test_search_sorted(self, mock_search):
         mock_search.return_value = {
             "_shards": {"failed": 0, "successful": 5, "total": 5},

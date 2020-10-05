@@ -23,6 +23,11 @@ class SearchFilterBackend(BaseFilterBackend):
 class SearchAPIView(APIView):
     filter_backends = (SearchFilterBackend,)
 
+    def _get_total(self, total):
+        if isinstance(total, dict):
+            return total["value"]
+        return total
+
     def get(self, request, *args, **kwargs):
         query = self.get_query()
         sort = self.get_sort()
@@ -43,7 +48,7 @@ class SearchAPIView(APIView):
 
         # map back to expected format
         items = list(indexer.map_results(res["hits"]["hits"]))
-        pagination.count = res["hits"]["total"]
+        pagination.count = self._get_total(res["hits"]["total"])
         return pagination.get_paginated_response(items)
 
     def get_indexer(self):
